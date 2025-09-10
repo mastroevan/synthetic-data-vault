@@ -8,8 +8,8 @@ export default function Home() {
   // Synthetic Data Generator States
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [variables, setVariables] = useState<{ [key: string]: string }>({});
-  const [generatedData, setGeneratedData] = useState<any>(null);
+  const [count, setCount] = useState<number>(100);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     fetch("/api/templates")
@@ -22,27 +22,42 @@ export default function Home() {
   const handleTemplateChange = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     setSelectedTemplate(template);
-    // Reset variables
-    if (template) {
-      const content = template.content || "{}";
-      const placeholderKeys = Array.from(content.matchAll(/{(.*?)}/g)).map((m) => (m as RegExpMatchArray)[1]);
-      const newVars: { [key: string]: string } = {};
-      placeholderKeys.forEach((key) => (newVars[key] = ""));
-      setVariables(newVars);
-    } else {
-      setVariables({});
-    }
   };
 
   const handleGenerate = async () => {
     if (!selectedTemplate) return alert("Select a template!");
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: selectedTemplate.id, variables }),
-    });
-    const data = await res.json();
-    setGeneratedData(data);
+    setIsGenerating(true);
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: selectedTemplate.id, count }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to generate data");
+      }
+
+      // Create a Blob from the CSV response and trigger a download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `synthetic-data-${selectedTemplate.name.replace(/\s+/g, '-').toLowerCase()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      alert("CSV file downloaded successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred while generating data.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -103,35 +118,28 @@ export default function Home() {
             ))}
           </select>
 
-          {/* Dynamic Input Fields */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-2 mb-4 flex-wrap">
-            {Object.keys(variables).map((key) => (
-              <input
-                key={key}
-                type="text"
-                placeholder={key}
-                value={variables[key]}
-                onChange={(e) => setVariables({ ...variables, [key]: e.target.value })}
-                className="border p-2 rounded-md w-full md:w-auto flex-1"
-              />
-            ))}
+          {/* New input for number of rows */}
+          <div className="flex items-center gap-2 mb-4">
+            <label htmlFor="count" className="text-gray-700">Number of Rows:</label>
+            <input
+              id="count"
+              type="number"
+              value={count}
+              onChange={(e) => setCount(Number(e.target.value))}
+              min="1"
+              className="border p-2 rounded-md w-24"
+            />
           </div>
 
           <div className="text-center">
             <button
               onClick={handleGenerate}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              className={`bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isGenerating}
             >
-              Generate
+              {isGenerating ? "Generating..." : "Generate & Download"}
             </button>
           </div>
-
-          {generatedData && (
-            <div className="mt-4 p-4 border rounded-md bg-gray-50">
-              <h3 className="font-semibold mb-2">Generated Data:</h3>
-              <pre className="overflow-x-auto">{generatedData.data}</pre>
-            </div>
-          )}
         </section>
       </div>
 
