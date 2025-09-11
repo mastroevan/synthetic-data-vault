@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
+import { auth } from "@clerk/nextjs/server";
 
 const prisma = new PrismaClient();
 
@@ -90,7 +91,45 @@ function generateRecord(schema: any): Record<string, any> {
   return record;
 }
 
+// This helper function converts an array of objects to a CSV string
+function convertToCsv(data: Record<string, any>[]): string {
+  if (data.length === 0) {
+    return "";
+  }
+  
+  // Get the headers from the first record, in their original order
+  let headerKeys = Object.keys(data[0]);
+
+  // Reorder the fields to put 'lastVisit' before 'conditions' for the header
+  const lastVisitIndex = headerKeys.indexOf('lastVisit');
+  const conditionsIndex = headerKeys.indexOf('conditions');
+  if (lastVisitIndex !== -1 && conditionsIndex !== -1 && lastVisitIndex > conditionsIndex) {
+    const reorderedKeys = [...headerKeys];
+    reorderedKeys[lastVisitIndex] = headerKeys[conditionsIndex];
+    reorderedKeys[conditionsIndex] = headerKeys[lastVisitIndex];
+    headerKeys = reorderedKeys;
+  }
+  const header = headerKeys.join(",");
+
+  const rows = data.map(row => {
+    return headerKeys.map(key => {
+      const value = row[key];
+      if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+        return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+      }
+      return value;
+    }).join(",");
+  });
+  return [header, ...rows].join("\n");
+}
+
 export async function POST(req: Request) {
+  // Check for authenticated user
+  const { userId } =  await auth();
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
   const { templateId, count } = await req.json();
 
   const template = await prisma.template.findUnique({ where: { id: templateId } });
@@ -106,7 +145,6 @@ export async function POST(req: Request) {
       generatedRecords.push(generateRecord(templateSchema));
     }
 
-    // Update the database with the first generated record
     await prisma.syntheticData.create({
       data: {
         templateId,

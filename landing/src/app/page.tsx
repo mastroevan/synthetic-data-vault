@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Shield, Zap, Database, Github, Linkedin, Twitter } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 // Helper function to download a file
 const downloadFile = (data: string, filename: string, mimeType: string) => {
@@ -19,16 +21,13 @@ const downloadFile = (data: string, filename: string, mimeType: string) => {
 const convertToCsv = (data: Record<string, any>[]): string => {
   if (data.length === 0) return "";
 
-  // Handle nested objects/arrays in header
   const headerKeys = Object.keys(data[0]);
   const header = headerKeys.join(",");
 
   const rows = data.map(row => {
     return headerKeys.map(key => {
       const value = row[key];
-      // Stringify objects and arrays to keep them in one cell
       if (typeof value === 'object' && value !== null) {
-        // Handle values with commas or quotes
         const stringifiedValue = JSON.stringify(value).replace(/"/g, '""');
         return `"${stringifiedValue}"`;
       }
@@ -39,8 +38,8 @@ const convertToCsv = (data: Record<string, any>[]): string => {
 };
 
 export default function Home() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const { isLoaded, isSignedIn } = useUser();
+  
   // Synthetic Data Generator States
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -120,13 +119,13 @@ export default function Home() {
         <p className="text-lg text-gray-600 mb-6 text-center max-w-xl">
           Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
         </p>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700"
-        >
-          Join the Waitlist
-        </button>
-
+        
+        {!isSignedIn && isLoaded && (
+          <Link href="/sign-up" className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700">
+            Sign up for free!
+          </Link>
+        )}
+        
         {/* Features Section */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
           <div className="flex flex-col items-center bg-white p-6 rounded-xl shadow-md">
@@ -153,85 +152,85 @@ export default function Home() {
         </section>
 
         {/* Synthetic Data Generator Section */}
-        <section className="mt-16 w-full max-w-4xl bg-white p-6 rounded-xl shadow-md mx-auto">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 text-center">Generate Synthetic Data</h2>
+        {isSignedIn && isLoaded && (
+          <section className="mt-16 w-full max-w-4xl bg-white p-6 rounded-xl shadow-md mx-auto">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 text-center">Generate Synthetic Data</h2>
 
-          {/* Template Dropdown */}
-          <select
-            onChange={(e) => handleTemplateChange(e.target.value)}
-            value={selectedTemplate?.id || ""}
-            className="border p-2 rounded-md w-full mb-4"
-          >
-            <option value="">Select Template</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-
-          {/* New input for number of rows */}
-          <div className="flex items-center gap-2 mb-4">
-            <label htmlFor="count" className="text-gray-700">Number of Rows:</label>
-            <input
-              id="count"
-              type="number"
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              min="1"
-              className="border p-2 rounded-md w-24"
-            />
-          </div>
-
-          <div className="text-center">
-            <button
-              onClick={handleGenerate}
-              className={`bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={isGenerating}
+            <select
+              onChange={(e) => handleTemplateChange(e.target.value)}
+              value={selectedTemplate?.id || ""}
+              className="border p-2 rounded-md w-full mb-4"
             >
-              {isGenerating ? "Generating..." : "Generate"}
-            </button>
-          </div>
+              <option value="">Select Template</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
 
-          {generatedData && (
-            <div className="mt-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Generated Data Preview</h3>
-                <div className="flex space-x-2">
-                  <button onClick={handleDownloadJson} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-                    Download JSON
-                  </button>
-                  <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                    Download CSV
-                  </button>
+            <div className="flex items-center gap-2 mb-4">
+              <label htmlFor="count" className="text-gray-700">Number of Rows:</label>
+              <input
+                id="count"
+                type="number"
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                min="1"
+                className="border p-2 rounded-md w-24"
+              />
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={handleGenerate}
+                className={`bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isGenerating}
+              >
+                {isGenerating ? "Generating..." : "Generate"}
+              </button>
+            </div>
+
+            {generatedData && (
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold">Generated Data Preview</h3>
+                  <div className="flex space-x-2">
+                    <button onClick={handleDownloadJson} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                      Download JSON
+                    </button>
+                    <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                      Download CSV
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="overflow-x-auto bg-gray-50 border rounded-md">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      {Object.keys(generatedData[0]).map((key) => (
-                        <th key={key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {key}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {generatedData.map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {Object.values(row).map((value, colIndex) => (
-                          <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {/* Display objects and arrays nicely */}
-                            {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
-                          </td>
+                <div className="overflow-x-auto bg-gray-50 border rounded-md">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        {Object.keys(generatedData[0]).map((key) => (
+                          <th key={key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {key}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {generatedData.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {Object.values(row).map((value, colIndex) => (
+                            <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
+        {!isLoaded && <div className="mt-16 w-full max-w-4xl text-center text-gray-500">Loading...</div>}
       </div>
 
       {/* Footer */}
@@ -249,32 +248,6 @@ export default function Home() {
           </a>
         </div>
       </footer>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl p-4 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 font-bold"
-            >
-              ✕
-            </button>
-
-            <iframe
-              src="https://docs.google.com/forms/d/e/1FAIpQLSdMMGGaP9jtM_XThafpABdSStK6dKN2r4Y1lhGFExYf8E2L_Q/viewform?embedded=true"
-              width="100%"
-              height="800"
-              frameBorder="0"
-              marginHeight={0}
-              marginWidth={0}
-              className="w-full"
-            >
-              Loading…
-            </iframe>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
