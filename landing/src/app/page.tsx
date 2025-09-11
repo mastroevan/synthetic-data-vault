@@ -38,6 +38,33 @@ const convertToCsv = (data: Record<string, any>[]): string => {
   return [header, ...rows].join("\n");
 };
 
+// New helper function to convert JSON to SQL INSERT statements
+const convertToSql = (data: Record<string, any>[], tableName: string): string => {
+  if (data.length === 0) return "";
+
+  const sanitizedTableName = tableName.replace(/\s+/g, '_').toLowerCase();
+  const columns = Object.keys(data[0]).join(", ");
+  
+  const insertStatements = data.map(row => {
+    const values = Object.values(row).map(value => {
+      if (typeof value === 'string') {
+        // Escape single quotes for SQL
+        const sanitizedValue = value.replace(/'/g, "''");
+        return `'${sanitizedValue}'`;
+      } else if (typeof value === 'object' && value !== null) {
+        // Stringify objects and arrays, then escape quotes
+        const stringifiedValue = JSON.stringify(value).replace(/'/g, "''");
+        return `'${stringifiedValue}'`;
+      }
+      return value;
+    }).join(", ");
+    
+    return `INSERT INTO "${sanitizedTableName}" (${columns}) VALUES (${values});`;
+  });
+
+  return insertStatements.join("\n");
+};
+
 export default function Home() {
   const { isLoaded, isSignedIn } = useUser();
   
@@ -110,6 +137,17 @@ export default function Home() {
     }
   };
 
+  // New function to handle SQL download
+  const handleDownloadSql = () => {
+    if (generatedData && selectedTemplate) {
+      downloadFile(
+        convertToSql(generatedData, selectedTemplate.name),
+        `synthetic-data-${selectedTemplate.name.replace(/\s+/g, '-').toLowerCase()}.sql`,
+        "application/sql"
+      );
+    }
+  };
+
   return (
     <div className="relative flex flex-col items-center p-8 bg-gradient-to-br from-gray-500 to-gray-400 text-gray-900 min-h-screen">
       {isSignedIn && isLoaded && (
@@ -119,65 +157,68 @@ export default function Home() {
       )}
 
       <main className="flex flex-col items-center max-w-5xl w-full flex-grow gap-8">
-        {/* Hero Section */}
-        <div className="flex flex-col items-center max-w-lg text-center gap-4">
-          <Image
-            src="/titletxt.png"
-            alt="Mock Data Pro"
-            quality={100}
-            width={700}
-            height={700}
-            className="w-64 h-auto"
-            />
-          <p className="text-lg text-gray-800">
-            Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
-          </p>
-          {!isSignedIn && (
-            <div className="flex gap-4">
-              <Link href="/auth/sign-in">
-                <button
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out"
-                >
-                  Sign In
-                </button>
-              </Link>
-              <Link href="/auth/sign-up">
-                <button
-                  className="px-8 py-3 bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
-                >
-                  Sign Up
-                </button>
-              </Link>
-            </div>
-          )}
-        </div>
         
-        {/* Features Section - Pyramid Layout */}
-        <section className="flex flex-col items-center gap-8 w-full max-w-2xl">
-          <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md w-full">
-            <Shield className="w-12 h-12 text-blue-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900">Privacy First</h3>
-            <p className="text-gray-700 text-center mt-2">
-              Data is anonymized and safe for compliance-heavy environments.
-            </p>
-          </div>
-          <div className="flex flex-col md:flex-row gap-8 w-full">
-            <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md flex-1">
-              <Zap className="w-12 h-12 text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900">Fast & Scalable</h3>
-              <p className="text-gray-700 text-center mt-2">
-                Generate millions of rows instantly for any industry use case.
+        {!isSignedIn && (
+          <>
+            {/* Hero Section */}
+            <div className="flex flex-col items-center max-w-lg text-center gap-4">
+              <Image
+                src="/titletxt.png"
+                alt="Mock Data Pro"
+                quality={100}
+                width={700}
+                height={700}
+                className="w-64 h-auto"
+              />
+              <p className="text-lg text-gray-800">
+                Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
               </p>
+              <div className="flex gap-4">
+                <Link href="/auth/sign-in">
+                  <button
+                    className="px-8 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out"
+                  >
+                    Sign In
+                  </button>
+                </Link>
+                <Link href="/auth/sign-up">
+                  <button
+                    className="px-8 py-3 bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+                  >
+                    Sign Up
+                  </button>
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md flex-1">
-              <Database className="w-12 h-12 text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900">Seamless Integration</h3>
-              <p className="text-gray-700 text-center mt-2">
-                Export directly to CSV, SQL, or API for smooth workflows.
-              </p>
-            </div>
-          </div>
-        </section>
+            
+            {/* Features Section - Pyramid Layout */}
+            <section className="flex flex-col items-center gap-8 w-full max-w-2xl">
+              <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md w-full">
+                <Shield className="w-12 h-12 text-blue-400 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900">Privacy First</h3>
+                <p className="text-gray-700 text-center mt-2">
+                  Data is anonymized and safe for compliance-heavy environments.
+                </p>
+              </div>
+              <div className="flex flex-col md:flex-row gap-8 w-full">
+                <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md flex-1">
+                  <Zap className="w-12 h-12 text-blue-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Fast & Scalable</h3>
+                  <p className="text-gray-700 text-center mt-2">
+                    Generate millions of rows instantly for any industry use case.
+                  </p>
+                </div>
+                <div className="flex flex-col items-center bg-gray-200 bg-opacity-75 p-6 rounded-xl shadow-md flex-1">
+                  <Database className="w-12 h-12 text-blue-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Seamless Integration</h3>
+                  <p className="text-gray-700 text-center mt-2">
+                    Export directly to CSV, SQL, or API for smooth workflows.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
 
         {/* Synthetic Data Generator Section */}
         {isSignedIn && isLoaded && (
@@ -223,6 +264,9 @@ export default function Home() {
                     </button>
                     <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
                       Download CSV
+                    </button>
+                    <button onClick={handleDownloadSql} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                      Download SQL
                     </button>
                   </div>
                 </div>
