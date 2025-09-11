@@ -125,7 +125,7 @@ function convertToCsv(data: Record<string, any>[]): string {
 
 export async function POST(req: Request) {
   // Check for authenticated user
-  const { userId } =  await auth();
+  const { userId } = await auth();
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }

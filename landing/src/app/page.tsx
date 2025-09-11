@@ -84,9 +84,9 @@ export default function Home() {
     } catch (error: any) {
       console.error(error);
       alert(error.message);
-    } finally {
-      setIsGenerating(false);
-    }
+      } finally {
+        setIsGenerating(false);
+      }
   };
 
   const handleDownloadJson = () => {
@@ -117,14 +117,13 @@ export default function Home() {
           Synthetic Data Vault
         </h1>
         <p className="text-lg text-gray-600 mb-6 text-center max-w-xl">
-          Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
-        </p>
-        
-        {!isSignedIn && isLoaded && (
-          <Link href="/sign-up" className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700">
-            Sign up for free!
-          </Link>
-        )}
+            Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
+          </p>
+          <button
+            className="px-8 py-3 bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+          >
+          Join the Waitlist
+          </button>
         
         {/* Features Section */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
