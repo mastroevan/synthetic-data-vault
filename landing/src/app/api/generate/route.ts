@@ -26,7 +26,6 @@ function generateRecord(schema: any): Record<string, any> {
       } else if (keyLower.includes("email")) {
         record[key] = faker.internet.email();
       } else if (keyLower === "merchant") {
-        // Corrected: Explicitly generate a single company name for merchant
         record[key] = faker.company.name();
       } else if (keyLower.includes("organization")) {
         record[key] = faker.company.name();
@@ -56,10 +55,10 @@ function generateRecord(schema: any): Record<string, any> {
             "High Cholesterol", "Chronic Back Pain"
           ];
           const arrayLength = faker.number.int({ min: 1, max: 3 });
-          record[key] = faker.helpers.arrayElements(conditions, arrayLength).join(", ");
+          record[key] = faker.helpers.arrayElements(conditions, arrayLength);
         } else {
           const arrayLength = faker.number.int({ min: 1, max: 3 });
-          record[key] = Array.from({ length: arrayLength }, () => faker.lorem.word()).join(", ");
+          record[key] = Array.from({ length: arrayLength }, () => faker.lorem.word());
         }
       } else if (items?.type === "object" && items.properties) {
         const arrayLength = faker.number.int({ min: 1, max: 5 });
@@ -77,7 +76,7 @@ function generateRecord(schema: any): Record<string, any> {
           }
           return item;
         });
-        record[key] = `"${JSON.stringify(generatedItems).replace(/"/g, '""')}"`;
+        record[key] = generatedItems;
       }
     } else if (type === "object" && objectProperties) {
       if (keyLower.includes("location")) {
@@ -89,38 +88,6 @@ function generateRecord(schema: any): Record<string, any> {
     }
   }
   return record;
-}
-
-// This helper function converts an array of objects to a CSV string
-function convertToCsv(data: Record<string, any>[]): string {
-  if (data.length === 0) {
-    return "";
-  }
-  
-  // Get the headers from the first record, in their original order
-  let headerKeys = Object.keys(data[0]);
-
-  // Reorder the fields to put 'lastVisit' before 'conditions' for the header
-  const lastVisitIndex = headerKeys.indexOf('lastVisit');
-  const conditionsIndex = headerKeys.indexOf('conditions');
-  if (lastVisitIndex !== -1 && conditionsIndex !== -1 && lastVisitIndex > conditionsIndex) {
-    const reorderedKeys = [...headerKeys];
-    reorderedKeys[lastVisitIndex] = headerKeys[conditionsIndex];
-    reorderedKeys[conditionsIndex] = headerKeys[lastVisitIndex];
-    headerKeys = reorderedKeys;
-  }
-  const header = headerKeys.join(",");
-
-  const rows = data.map(row => {
-    return headerKeys.map(key => {
-      const value = row[key];
-      if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
-        return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-      }
-      return value;
-    }).join(",");
-  });
-  return [header, ...rows].join("\n");
 }
 
 export async function POST(req: Request) {
@@ -139,8 +106,7 @@ export async function POST(req: Request) {
       generatedRecords.push(generateRecord(templateSchema));
     }
 
-    const csvData = convertToCsv(generatedRecords);
-
+    // Update the database with the first generated record
     await prisma.syntheticData.create({
       data: {
         templateId,
@@ -148,12 +114,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return new Response(csvData, {
+    return new Response(JSON.stringify({ data: generatedRecords }), {
       status: 200,
-      headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="synthetic-data-${template.name.replace(/\s+/g, '-').toLowerCase()}.csv"`,
-      },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error(error);

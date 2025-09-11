@@ -2,6 +2,42 @@
 import { useState, useEffect } from "react";
 import { Shield, Zap, Database, Github, Linkedin, Twitter } from "lucide-react";
 
+// Helper function to download a file
+const downloadFile = (data: string, filename: string, mimeType: string) => {
+  const blob = new Blob([data], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Helper function to convert JSON to CSV
+const convertToCsv = (data: Record<string, any>[]): string => {
+  if (data.length === 0) return "";
+
+  // Handle nested objects/arrays in header
+  const headerKeys = Object.keys(data[0]);
+  const header = headerKeys.join(",");
+
+  const rows = data.map(row => {
+    return headerKeys.map(key => {
+      const value = row[key];
+      // Stringify objects and arrays to keep them in one cell
+      if (typeof value === 'object' && value !== null) {
+        // Handle values with commas or quotes
+        const stringifiedValue = JSON.stringify(value).replace(/"/g, '""');
+        return `"${stringifiedValue}"`;
+      }
+      return value;
+    }).join(",");
+  });
+  return [header, ...rows].join("\n");
+};
+
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -10,6 +46,7 @@ export default function Home() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [count, setCount] = useState<number>(100);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedData, setGeneratedData] = useState<any[] | null>(null);
 
   useEffect(() => {
     fetch("/api/templates")
@@ -18,14 +55,17 @@ export default function Home() {
       .catch(console.error);
   }, []);
 
-  // When user selects a template, parse placeholders
   const handleTemplateChange = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     setSelectedTemplate(template);
+    setGeneratedData(null); // Clear previous data
   };
 
   const handleGenerate = async () => {
-    if (!selectedTemplate) return alert("Select a template!");
+    if (!selectedTemplate) {
+      alert("Select a template!");
+      return;
+    }
     setIsGenerating(true);
 
     try {
@@ -36,27 +76,37 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate data");
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate data.");
       }
 
-      // Create a Blob from the CSV response and trigger a download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `synthetic-data-${selectedTemplate.name.replace(/\s+/g, '-').toLowerCase()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      alert("CSV file downloaded successfully!");
-    } catch (error) {
+      const data = await response.json();
+      setGeneratedData(data.data);
+    } catch (error: any) {
       console.error(error);
-      alert("An error occurred while generating data.");
+      alert(error.message);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadJson = () => {
+    if (generatedData) {
+      downloadFile(
+        JSON.stringify(generatedData, null, 2),
+        `synthetic-data-${selectedTemplate.name.replace(/\s+/g, '-').toLowerCase()}.json`,
+        "application/json"
+      );
+    }
+  };
+
+  const handleDownloadCsv = () => {
+    if (generatedData) {
+      downloadFile(
+        convertToCsv(generatedData),
+        `synthetic-data-${selectedTemplate.name.replace(/\s+/g, '-').toLowerCase()}.csv`,
+        "text/csv"
+      );
     }
   };
 
@@ -137,9 +187,50 @@ export default function Home() {
               className={`bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={isGenerating}
             >
-              {isGenerating ? "Generating..." : "Generate & Download"}
+              {isGenerating ? "Generating..." : "Generate"}
             </button>
           </div>
+
+          {generatedData && (
+            <div className="mt-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold">Generated Data Preview</h3>
+                <div className="flex space-x-2">
+                  <button onClick={handleDownloadJson} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    Download JSON
+                  </button>
+                  <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Download CSV
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto bg-gray-50 border rounded-md">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      {Object.keys(generatedData[0]).map((key) => (
+                        <th key={key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {generatedData.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {Object.values(row).map((value, colIndex) => (
+                          <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {/* Display objects and arrays nicely */}
+                            {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
       </div>
 
