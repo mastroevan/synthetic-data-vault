@@ -85,9 +85,9 @@ export default function Home() {
     } catch (error: any) {
       console.error(error);
       alert(error.message);
-    } finally {
-      setIsGenerating(false);
-    }
+      } finally {
+        setIsGenerating(false);
+      }
   };
 
   const handleDownloadJson = () => {
@@ -118,15 +118,14 @@ export default function Home() {
           Synthetic Data Vault
         </h1>
         <p className="text-lg text-gray-600 mb-6 text-center max-w-xl">
-          Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
-        </p>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700"
-        >
+            Generate realistic, privacy-safe datasets on demand. Perfect for AI training, analytics, and testing.
+          </p>
+          <button
+            className="px-8 py-3 bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+          >
           Join the Waitlist
-        </button>
-
+          </button>
+        
         {/* Features Section */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
           <div className="flex flex-col items-center bg-white p-6 rounded-xl shadow-md">
@@ -155,32 +154,33 @@ export default function Home() {
         {/* Synthetic Data Generator Section */}
         <section className="mt-16 w-full max-w-4xl bg-white p-6 rounded-xl shadow-md mx-auto">
           <h2 className="text-2xl font-bold mb-4 text-gray-900 text-center">Generate Synthetic Data</h2>
-
+          
           {/* Template Dropdown */}
-          <select
-            onChange={(e) => handleTemplateChange(e.target.value)}
-            value={selectedTemplate?.id || ""}
+              <select
+                id="template-select"
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                value={selectedTemplate?.id || ""}
             className="border p-2 rounded-md w-full mb-4"
-          >
-            <option value="">Select Template</option>
-            {templates.map((t) => (
+              >
+                <option value="">Select Template</option>
+                {templates.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+                ))}
+              </select>
 
           {/* New input for number of rows */}
           <div className="flex items-center gap-2 mb-4">
             <label htmlFor="count" className="text-gray-700">Number of Rows:</label>
-            <input
-              id="count"
-              type="number"
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              min="1"
+              <input
+                id="count"
+                type="number"
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                min="1"
               className="border p-2 rounded-md w-24"
-            />
+              />
           </div>
-
+          
           <div className="text-center">
             <button
               onClick={handleGenerate}
@@ -273,7 +273,7 @@ export default function Home() {
               Loading…
             </iframe>
           </div>
-        </div>
+    </div>
       )}
     </main>
   );

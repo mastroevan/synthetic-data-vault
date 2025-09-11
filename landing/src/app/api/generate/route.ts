@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
+import { auth } from "@clerk/nextjs/server";
 
 const prisma = new PrismaClient();
 
@@ -91,6 +92,12 @@ function generateRecord(schema: any): Record<string, any> {
 }
 
 export async function POST(req: Request) {
+  // Check for authenticated user
+  const { userId } = await auth();
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
   const { templateId, count } = await req.json();
 
   const template = await prisma.template.findUnique({ where: { id: templateId } });
@@ -106,7 +113,6 @@ export async function POST(req: Request) {
       generatedRecords.push(generateRecord(templateSchema));
     }
 
-    // Update the database with the first generated record
     await prisma.syntheticData.create({
       data: {
         templateId,
