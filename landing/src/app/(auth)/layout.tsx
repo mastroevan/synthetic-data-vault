@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="relative flex min-h-screen flex-col items-end justify-center bg-gray-900 py-12 pr-12">
       <Image
-        src="/bgimage.jpg"
+        src="/bgimage.png"
         alt="Background"
         fill
         quality={100}

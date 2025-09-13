@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 datasource db {
   provider = "postgresql" // or "sqlite" if you’re using SQLite
   url      = env("DATABASE_URL") // make sure this is set in your .env
@@ -5,6 +8,18 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+}
+
+model User {
+  id               String          @id @default(uuid())
+  clerkUserId      String          @unique
+  subscriptionId   String?         @unique
+  stripeCustomerId String?         @unique
+  plan             String          @default("free") // "free", "trial", or "pro"
+  trialEndsAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  syntheticData    SyntheticData[]
 }
 
 model Template {
@@ -16,6 +31,8 @@ model Template {
 
 model SyntheticData {
   id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
   template   Template @relation(fields: [templateId], references: [id])
   templateId String
   data       String
