@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -125,16 +126,52 @@ function convertToCsv(data: Record<string, any>[]): string {
 
 export async function POST(req: Request) {
   // Check for authenticated user
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
   const { templateId, count } = await req.json();
 
+  // Get user from the database
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId },
+  });
+
+  if (!user) {
+    return new NextResponse(JSON.stringify({ error: "User not found" }), { status: 404 });
+  }
+
+  // --- Start of new logic for subscription limits ---
+
+  const planLimits: { [key: string]: number } = {
+    FREE: 1000,
+    STARTER: 100000,
+    PRO: 5000000,
+    TEAM: 50000000,
+    ENTERPRISE: Infinity,
+  };
+
+  const currentLimit = planLimits[user.plan];
+  const remainingRows = currentLimit - user.monthlyRowsGenerated;
+
+  if (user.plan === "FREE" && user.monthlyRowsGenerated >= 1000) {
+    return new NextResponse(JSON.stringify({ error: "Monthly free row limit exceeded." }), { status: 403 });
+  }
+  
+  if (user.plan !== "FREE" && user.monthlyRowsGenerated >= currentLimit) {
+    return new NextResponse(JSON.stringify({ error: "Monthly row limit exceeded for your plan." }), { status: 403 });
+  }
+
+  if (count > remainingRows) {
+    return new NextResponse(JSON.stringify({ error: `Requested row count (${count}) exceeds your remaining monthly limit of ${remainingRows}.` }), { status: 403 });
+  }
+
+  // --- End of new logic for subscription limits ---
+
   const template = await prisma.template.findUnique({ where: { id: templateId } });
   if (!template) {
-    return new Response(JSON.stringify({ error: "Template not found" }), { status: 404 });
+    return new NextResponse(JSON.stringify({ error: "Template not found" }), { status: 404 });
   }
 
   try {
@@ -145,19 +182,30 @@ export async function POST(req: Request) {
       generatedRecords.push(generateRecord(templateSchema));
     }
 
+    // Update the user's monthly row count
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        monthlyRowsGenerated: {
+          increment: count,
+        },
+      },
+    });
+
     await prisma.syntheticData.create({
       data: {
+        userId: user.id,
         templateId,
         data: JSON.stringify(generatedRecords[0]),
       },
     });
 
-    return new Response(JSON.stringify({ data: generatedRecords }), {
+    return new NextResponse(JSON.stringify({ data: generatedRecords }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error(error);
-    return new Response(JSON.stringify({ error: "Failed to generate data" }), { status: 500 });
+    return new NextResponse(JSON.stringify({ error: "Failed to generate data" }), { status: 500 });
   }
 }

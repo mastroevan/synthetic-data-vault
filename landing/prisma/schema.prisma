@@ -13,20 +13,49 @@ generator client {
 model User {
   id               String          @id @default(uuid())
   clerkUserId      String          @unique
+
   subscriptionId   String?         @unique
   stripeCustomerId String?         @unique
-  plan             String          @default("free") // "free", "trial", or "pro"
+
+  // New fields for subscription management
+  plan             Plan            @default(FREE)
   trialEndsAt      DateTime?
+
+  // Additional fields for team and usage tracking
+  teamId           String?
+  team             Team?           @relation(fields: [teamId], references: [id])
+
+  // Usage and limits
+  monthlyRowsGenerated Int @default(0)
+
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   syntheticData    SyntheticData[]
+}
+
+// New enum for plan types
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  TEAM
+  ENTERPRISE
+}
+
+model Team {
+  id           String @id @default(uuid())
+  name         String
+  ownerId      String
+  members      User[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Template {
   id            String          @id @default(uuid())
   name          String
   content       String
-  syntheticData SyntheticData[] // ← Add this so Prisma knows the relation
+  syntheticData SyntheticData[]
 }
 
 model SyntheticData {

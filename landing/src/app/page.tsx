@@ -65,8 +65,22 @@ const convertToSql = (data: Record<string, any>[], tableName: string): string =>
   return insertStatements.join("\n");
 };
 
+// New utility function to determine if a user has access to a specific export type
+const hasAccess = (userPlan: string, exportType: 'json' | 'csv' | 'sql') => {
+  if (userPlan === 'FREE') {
+    return exportType === 'json';
+  }
+  if (userPlan === 'STARTER') {
+    return exportType === 'json' || exportType === 'csv';
+  }
+  if (userPlan === 'PRO' || userPlan === 'TEAM' || userPlan === 'ENTERPRISE') {
+    return true; // All export types available for these plans
+  }
+  return false;
+};
+
 export default function Home() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user: clerkUser } = useUser();
   
   // Synthetic Data Generator States
   const [templates, setTemplates] = useState<any[]>([]);
@@ -74,6 +88,28 @@ export default function Home() {
   const [count, setCount] = useState<number>(100);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedData, setGeneratedData] = useState<any[] | null>(null);
+  
+  // New state to hold the user's plan
+  const [userPlan, setUserPlan] = useState<string>('FREE');
+
+  // New useEffect hook to fetch user's plan
+  useEffect(() => {
+    if (isSignedIn && clerkUser) {
+      // In a real implementation, you would fetch this from your database
+      // For now, let's mock it to test the UI
+      // Example of a real fetch:
+      // fetch('/api/user-plan').then(res => res.json()).then(data => setUserPlan(data.plan));
+      // Replace with your logic to fetch the user's actual plan from your database
+      // Example:
+      // if (clerkUser.id === 'user_2f0m8n') {
+      //   setUserPlan('PRO');
+      // } else {
+      //   setUserPlan('FREE');
+      // }
+      // For now, let's just set a default or mock plan for demonstration
+      setUserPlan('PRO');
+    }
+  }, [isSignedIn, clerkUser]);
 
   useEffect(() => {
     fetch("/api/templates")
@@ -262,12 +298,16 @@ export default function Home() {
                     <button onClick={handleDownloadJson} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
                       Download JSON
                     </button>
-                    <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                      Download CSV
-                    </button>
-                    <button onClick={handleDownloadSql} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                      Download SQL
-                    </button>
+                    {hasAccess(userPlan, 'csv') && (
+                      <button onClick={handleDownloadCsv} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Download CSV
+                      </button>
+                    )}
+                    {hasAccess(userPlan, 'sql') && (
+                      <button onClick={handleDownloadSql} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        Download SQL
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="overflow-x-auto bg-gray-300 border border-gray-400 rounded-md">
