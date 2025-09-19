@@ -7,5 +7,6 @@ export const config = {
     '/',
     '/api/templates',
     '/api/generate',
+    '/api/webbhooks/clerk',
   ],
 };
