@@ -1,34 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema
+// Docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "postgresql" // or "sqlite" if you’re using SQLite
-  url      = env("DATABASE_URL") // make sure this is set in your .env
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id               String          @id @default(uuid())
-  clerkUserId      String          @unique
-  email            String?         @unique // <--- ADD THIS LINE
-  subscriptionId   String?         @unique
-  stripeCustomerId String?         @unique
-  plan             Plan            @default(FREE)
-  trialEndsAt      DateTime?
-  teamId           String?
-  team             Team?           @relation(fields: [teamId], references: [id])
-  monthlyRowsGenerated Int @default(0)
-
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  syntheticData    SyntheticData[]
-}
-
-
-// New enum for plan types
+//
+// ----------------- ENUMS -----------------
+//
 enum Plan {
   FREE
   STARTER
@@ -37,15 +21,40 @@ enum Plan {
   ENTERPRISE
 }
 
-model Team {
-  id           String @id @default(uuid())
-  name         String
-  ownerId      String
-  members      User[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+//
+// ----------------- MODELS -----------------
+//
+
+// Users of your app
+model User {
+  id                   String    @id @default(uuid())
+  clerkUserId          String    @unique
+  email                String?   @unique
+  subscriptionId       String?   @unique
+  stripeCustomerId     String?   @unique
+  plan                 Plan      @default(FREE)
+  trialEndsAt          DateTime?
+  teamId               String?
+  team                 Team?     @relation(fields: [teamId], references: [id])
+  monthlyRowsGenerated Int       @default(0)
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  syntheticData        SyntheticData[]
 }
 
+// Teams for collaboration
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  members   User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Mock data templates
 model Template {
   id            String          @id @default(uuid())
   name          String
@@ -53,6 +62,7 @@ model Template {
   syntheticData SyntheticData[]
 }
 
+// Generated synthetic datasets
 model SyntheticData {
   id         String   @id @default(uuid())
   user       User     @relation(fields: [userId], references: [id])

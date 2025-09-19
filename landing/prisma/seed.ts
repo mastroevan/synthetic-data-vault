@@ -71,6 +71,76 @@ async function main() {
           },
           required: ["transactionId", "userId", "amount", "currency", "merchant"]
         })
+      },
+      {
+      name: "SaaS Subscriptions",
+      content: JSON.stringify({
+        type: "object",
+        properties: {
+          subscriptionId: { type: "string", format: "uuid" },
+          userId: { type: "string", format: "uuid" },
+          plan: { type: "string" },
+          status: { type: "string", enum: ["active", "canceled", "trialing"] },
+          startedAt: { type: "string", format: "date-time" },
+          renewalAt: { type: "string", format: "date-time" },
+        },
+        required: ["subscriptionId", "userId", "plan", "status"],
+      }),
+    },
+    {
+        name: "IoT Sensor Data",
+        content: JSON.stringify({
+          type: "object",
+          properties: {
+            sensorId: { type: "string", format: "uuid" },
+            type: { type: "string", enum: ["temperature", "humidity", "motion", "light"] },
+            value: { type: "number" },
+            unit: { type: "string" },
+            recordedAt: { type: "string", format: "date-time" },
+            location: {
+              type: "object",
+              properties: {
+                building: { type: "string" },
+                room: { type: "string" }
+              }
+            }
+          },
+          required: ["sensorId", "type", "value", "recordedAt"]
+        })
+      },
+      {
+        name: "HR Employees",
+        content: JSON.stringify({
+          type: "object",
+          properties: {
+            employeeId: { type: "string", format: "uuid" },
+            firstName: { type: "string" },
+            lastName: { type: "string" },
+            email: { type: "string", format: "email" },
+            position: { type: "string" },
+            department: { type: "string" },
+            hireDate: { type: "string", format: "date" },
+            salary: { type: "number" },
+            isActive: { type: "boolean" }
+          },
+          required: ["employeeId", "firstName", "lastName", "email", "position"]
+        })
+      },
+      {
+        name: "Products Catalog",
+        content: JSON.stringify({
+          type: "object",
+          properties: {
+            productId: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            description: { type: "string" },
+            price: { type: "number" },
+            category: { type: "string" },
+            stock: { type: "integer", minimum: 0 },
+            isActive: { type: "boolean" }
+          },
+          required: ["productId", "name", "price", "category", "stock"]
+        })
       }
     ]
   });

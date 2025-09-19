@@ -35,6 +35,9 @@ export async function POST(req: Request) {
     // Determine the success and cancel URLs based on your domain
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const host = req.headers.get('host');
+    if (!host) {
+      return new NextResponse(JSON.stringify({ error: "Host header is missing" }), { status: 400 });
+    }
     const baseUrl = `${protocol}://${host}`;
 
     const session = await stripe.checkout.sessions.create({
@@ -47,8 +50,8 @@ export async function POST(req: Request) {
       ],
       success_url: `${baseUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
-      customer_email: user.email, // Use the user object from Prisma
-      client_reference_id: user.id, // Pass our user ID to the Stripe session
+      customer_email: user.email ?? undefined, // Use the user object from Prisma
+      client_reference_id: user.id ?? undefined, // Pass our user ID to the Stripe session
     });
 
     return NextResponse.json({ url: session.url });

@@ -8,9 +8,9 @@ type PlanName = 'STARTER' | 'PRO' | 'TEAM';
 
 // You will need to replace these with your actual Stripe price IDs
 const stripePriceIds: Record<PlanName, string> = {
-  STARTER: 'price_1234',
-  PRO: 'price_5678',
-  TEAM: 'price_9012',
+  STARTER: 'prod_T58ijGil7Fu6od',
+  PRO: 'prod_T58lARyqtLkbz3',
+  TEAM: 'prod_T58mhrXmuE7tZk',
 };
 
 // Define the pricing plan features based on your specifications
